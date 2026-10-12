@@ -1,0 +1,26 @@
+.venv/
+venv/
+env/
+path/
+
+
+data-lake/silver/*.db
+data-lake/silver/*.db-journal
+data-lake/silver/*.db-wal
+data-lake/silver/*.db-shm
+
+__pycache__/
+*.py[cod]
+
+.DS_Store
+.vscode/
+
+.env
+.env.*
+
+*.log
+
+
+# csv demasiado grandes, en local
+data-lake/bronze/**/*.csv
+data-lake/silver/*.db
