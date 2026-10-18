@@ -1,0 +1,7 @@
+column,postgres_type
+snapshot_id,TEXT
+source_file,TEXT
+neighbourhood,TEXT
+neighbourhood_group,TEXT
+geometry_type,TEXT
+geometry,JSONB

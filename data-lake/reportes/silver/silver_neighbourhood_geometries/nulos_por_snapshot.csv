@@ -1,0 +1,13 @@
+snapshot,column,total_rows,null_count,null_percent
+JUNE,neighbourhood,16,0,0.0
+MARCH,neighbourhood,16,0,0.0
+SEP,neighbourhood,16,0,0.0
+JUNE,neighbourhood_group,16,16,100.0
+MARCH,neighbourhood_group,16,16,100.0
+SEP,neighbourhood_group,16,16,100.0
+JUNE,geometry_type,16,0,0.0
+MARCH,geometry_type,16,0,0.0
+SEP,geometry_type,16,0,0.0
+JUNE,geometry,16,0,0.0
+MARCH,geometry,16,0,0.0
+SEP,geometry,16,0,0.0

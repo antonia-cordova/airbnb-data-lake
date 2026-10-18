@@ -16,9 +16,9 @@ sql/create_silver_postgres.sql (pg_dump --schema-only).
 Uso (desde la raíz del repositorio, con PostgreSQL levantado):
 
     docker compose up -d
-    python data-lake/scripts_david/main.py                     # todo
-    python data-lake/scripts_david/main.py listings reviews    # solo algunos
-    python data-lake/scripts_david/main.py --sin-reportes      # solo ETL
+    python data-lake/scripts/main.py                     # todo
+    python data-lake/scripts/main.py listings reviews    # solo algunos
+    python data-lake/scripts/main.py --sin-reportes      # solo ETL
 """
 
 import argparse

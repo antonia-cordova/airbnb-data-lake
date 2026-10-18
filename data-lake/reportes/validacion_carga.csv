@@ -1,0 +1,13 @@
+table,snapshot,bronze_rows,silver_rows,matches
+silver_listings,JUNE,31430,31430,True
+silver_listings,MARCH,22770,22770,True
+silver_listings,SEP,31430,31430,True
+silver_reviews,JUNE,1719730,1719730,True
+silver_reviews,MARCH,1471749,1471749,True
+silver_reviews,SEP,1795294,1795294,True
+silver_neighbourhoods,JUNE,16,16,True
+silver_neighbourhoods,MARCH,16,16,True
+silver_neighbourhoods,SEP,16,16,True
+silver_neighbourhood_geometries,JUNE,16,16,True
+silver_neighbourhood_geometries,MARCH,16,16,True
+silver_neighbourhood_geometries,SEP,16,16,True

@@ -1,0 +1,3 @@
+column,total_rows,null_count,null_percent,max_snapshot_null_percent
+neighbourhood_group,48,48,100.0,100.0
+neighbourhood,48,0,0.0,0.0

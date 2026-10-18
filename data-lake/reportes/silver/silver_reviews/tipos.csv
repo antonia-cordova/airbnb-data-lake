@@ -1,0 +1,9 @@
+column,postgres_type
+snapshot_id,TEXT
+source_file,TEXT
+listing_id,BIGINT
+id,BIGINT
+date,DATE
+reviewer_id,BIGINT
+reviewer_name,TEXT
+comments,TEXT

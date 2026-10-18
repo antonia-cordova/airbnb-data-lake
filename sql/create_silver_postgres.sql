@@ -1,5 +1,5 @@
 -- Esquema real de la capa Silver en PostgreSQL.
--- Generado automáticamente por data-lake/scripts_david/esquema.py
+-- Generado automáticamente por data-lake/scripts/esquema.py
 -- al final de cada ejecución de main.py. No editar a mano.
 
 --

@@ -1,4 +1,4 @@
-# PostgreSQL para la capa Silver del ETL de data-lake/scripts_david.
+# PostgreSQL para la capa Silver del ETL de data-lake/scripts.
 # Las credenciales se leen del archivo .env de la raíz (ver .env.example).
 #
 #   docker compose up -d      # levantar

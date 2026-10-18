@@ -38,7 +38,7 @@ OPCIONES_PG_DUMP = [
 
 ENCABEZADO = (
     "-- Esquema real de la capa Silver en PostgreSQL.\n"
-    "-- Generado automáticamente por data-lake/scripts_david/esquema.py\n"
+    "-- Generado automáticamente por data-lake/scripts/esquema.py\n"
     "-- al final de cada ejecución de main.py. No editar a mano.\n\n"
 )
 

@@ -1,0 +1,5 @@
+column,postgres_type
+snapshot_id,TEXT
+source_file,TEXT
+neighbourhood_group,TEXT
+neighbourhood,TEXT

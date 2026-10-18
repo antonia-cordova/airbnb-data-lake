@@ -1,7 +1,7 @@
 """
 Paso 7 - Reportes de calidad (todos los CSV se escriben con pandas).
 
-Genera en data-lake/reportes_david/:
+Genera en data-lake/reportes/:
 
     bronze/<dataset>/           (p. ej. bronze/listings/)
         nulos_por_snapshot.csv  Vacíos por columna en Bronze, antes de limpiar.

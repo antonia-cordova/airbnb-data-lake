@@ -22,7 +22,7 @@ from sqlalchemy.engine import URL
 # ---------------------------------------------------------------------------
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 BRONZE_DIR = PROJECT_DIR / "data-lake" / "bronze"
-REPORT_DIR = PROJECT_DIR / "data-lake" / "reportes_david"
+REPORT_DIR = PROJECT_DIR / "data-lake" / "reportes"
 # Esquema real de Silver exportado con pg_dump tras cada carga.
 ARCHIVO_ESQUEMA = PROJECT_DIR / "sql" / "create_silver_postgres.sql"
 

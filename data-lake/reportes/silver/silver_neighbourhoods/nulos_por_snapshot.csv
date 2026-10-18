@@ -1,0 +1,7 @@
+snapshot,column,total_rows,null_count,null_percent
+JUNE,neighbourhood_group,16,16,100.0
+MARCH,neighbourhood_group,16,16,100.0
+SEP,neighbourhood_group,16,16,100.0
+JUNE,neighbourhood,16,0,0.0
+MARCH,neighbourhood,16,0,0.0
+SEP,neighbourhood,16,0,0.0
