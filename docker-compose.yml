@@ -1,0 +1,28 @@
+# PostgreSQL para la capa Silver del ETL de data-lake/scripts_david.
+# Las credenciales se leen del archivo .env de la raíz (ver .env.example).
+#
+#   docker compose up -d      # levantar
+#   docker compose down       # detener (los datos se conservan en el volumen)
+#   docker compose down -v    # detener y borrar los datos
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: airbnb_silver_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    ports:
+      - "${PGPORT:-5433}:5432"
+    volumes:
+      - silver_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  silver_pgdata:
