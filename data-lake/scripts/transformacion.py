@@ -56,7 +56,35 @@ def limpiar_vacios(df: pd.DataFrame) -> None:
 
         df[columna] = valores.mask(es_nulo)
 
+# ---------------------------------------------------------------------------
+# Ofuscación de coordenadas geográficas
+# ---------------------------------------------------------------------------
+COLUMNAS_COORDENADAS = ("latitude", "longitude")
+DECIMALES_COORDENADAS = 2
 
+
+def ofuscar_coordenadas(df: pd.DataFrame) -> None:
+    """
+    Trunca latitud y longitud a 2 decimales para reducir
+    la precisión geográfica en la capa Silver.
+
+    Los valores nulos se conservan.
+    Los valores originales permanecen intactos en Bronze.
+    """
+    for columna in COLUMNAS_COORDENADAS:
+        if columna not in df.columns:
+            continue
+
+        valores = pd.to_numeric(df[columna], errors="raise")
+        factor = 10 ** DECIMALES_COORDENADAS
+
+        df[columna] = valores.map(
+            lambda valor: (
+                f"{int(valor * factor) / factor:.{DECIMALES_COORDENADAS}f}"
+                if pd.notna(valor)
+                else None
+            )
+        )
 # ---------------------------------------------------------------------------
 # Inferencia de tipos
 # ---------------------------------------------------------------------------
@@ -147,6 +175,8 @@ def transformar(df: pd.DataFrame) -> dict[str, str]:
     """
     limpiar_vacios(df)
 
+    ofuscar_coordenadas(df)
+
     tipos = {}
     for columna in df.columns:
         if columna in COLUMNAS_PROCEDENCIA:
@@ -175,3 +205,4 @@ def validar_clave(df: pd.DataFrame, clave: tuple[str, ...]) -> None:
     duplicados = int(df.duplicated(subset=list(clave)).sum())
     if duplicados:
         raise ValueError(f"{duplicados} filas duplican la clave {clave}")
+

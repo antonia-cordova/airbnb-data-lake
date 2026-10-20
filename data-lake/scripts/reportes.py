@@ -17,9 +17,16 @@ Genera en data-lake/reportes/:
 Los conteos de Silver se calculan con SQL dentro de PostgreSQL y solo el
 resultado se trae a pandas, para no volver a cargar millones de filas en
 memoria.
+
+La validación geográfica comprueba en Silver:
+- coordenadas con más de dos decimales;
+- rango de latitudes observado;
+- diámetro diagonal aproximado de una celda de 0,01° x 0,01°.
+
 """
 
 import logging
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -31,6 +38,8 @@ from extraccion import COLUMNAS_PROCEDENCIA
 
 log = logging.getLogger(__name__)
 
+DECIMALES_COORDENADAS = 2
+TAM_CELDA_GRADOS = 10 ** (-DECIMALES_COORDENADAS)
 
 def _carpeta_bronze(dataset: Dataset) -> Path:
     """Carpeta de reportes de Bronze del conjunto: bronze/<dataset>/."""
@@ -153,6 +162,123 @@ def validar_carga(motor: Engine, dataset: Dataset,
     if not comparacion["matches"].all():
         log.warning("  Conteos distintos entre Bronze y Silver en %s", dataset.tabla)
     return comparacion
+
+
+def guardar_validacion(validaciones: list[pd.DataFrame]) -> None:
+    """Guarda en un único CSV la validación de todos los conjuntos cargados."""
+    if validaciones:
+        _guardar(
+            pd.concat(validaciones, ignore_index=True),
+            Path("validacion_carga.csv"),
+        )
+
+
+def validar_coordenadas_silver(
+    motor: Engine,
+    dataset: Dataset,
+) -> pd.DataFrame:
+    """Valida precisión de coordenadas y diámetro aproximado de las celdas.
+
+    Supone que latitude y longitude son columnas numéricas en PostgreSQL y
+    que la transformación las truncó a dos decimales.
+
+
+    Para una celda de 0,01° x 0,01°:
+      alto_km ≈ 111,32 * 0,01
+      ancho_km ≈ 111,32 * cos(latitud) * 0,01
+
+    Usa la latitud observada de mayor valor absoluto para estimar el ancho
+    de longitud mínimo dentro del dataset y, por tanto, una cota conservadora
+    del diámetro diagonal aproximado.
+    """
+    consulta = sql.SQL(
+        """
+        SELECT
+            snapshot_id,
+            COUNT(*) AS total_rows,
+            COUNT(latitude) AS latitude_not_null,
+            COUNT(longitude) AS longitude_not_null,
+            COUNT(*) FILTER (
+                WHERE latitude IS NOT NULL
+                  AND ABS(latitude * 100 - ROUND(latitude * 100)) > 0.000001
+            ) AS latitude_excess_decimals,
+            COUNT(*) FILTER (
+                WHERE longitude IS NOT NULL
+                  AND ABS(longitude * 100 - ROUND(longitude * 100)) > 0.000001
+            ) AS longitude_excess_decimals,
+            MIN(latitude) AS min_latitude,
+            MAX(latitude) AS max_latitude
+        FROM {}
+        GROUP BY snapshot_id
+        ORDER BY snapshot_id
+        """
+    ).format(sql.Identifier(dataset.tabla))
+
+    conexion = motor.raw_connection()
+    try:
+        texto = consulta.as_string(conexion.driver_connection)
+    finally:
+        conexion.close()
+
+    resultado = pd.read_sql(texto, motor)
+
+    if resultado.empty:
+        log.warning("No hay filas en %s para validar coordenadas", dataset.tabla)
+        return resultado
+
+    latitudes_extremas = pd.concat(
+        [resultado["min_latitude"], resultado["max_latitude"]],
+        ignore_index=True,
+    ).dropna()
+
+    if latitudes_extremas.empty:
+        latitud_maxima_abs = 0.0
+        diametro_km = float("nan")
+    else:
+        latitud_maxima_abs = float(latitudes_extremas.abs().max())
+        alto_km = 111.32 * TAM_CELDA_GRADOS
+        ancho_km = (
+            111.32
+            * math.cos(math.radians(latitud_maxima_abs))
+            * TAM_CELDA_GRADOS
+        )
+        diametro_km = math.hypot(alto_km, ancho_km)
+
+    resultado["latitude_precision_ok"] = (
+        resultado["latitude_excess_decimals"] == 0
+    )
+    resultado["longitude_precision_ok"] = (
+        resultado["longitude_excess_decimals"] == 0
+    )
+    resultado["precision_ok"] = (
+        resultado["latitude_precision_ok"]
+        & resultado["longitude_precision_ok"]
+    )
+    resultado["max_abs_latitude_used_deg"] = round(latitud_maxima_abs, 6)
+    resultado["estimated_cell_diameter_km"] = (
+        round(diametro_km, 3) if not math.isnan(diametro_km) else None
+    )
+    resultado["diameter_ok"] = (
+        bool(diametro_km < 2) if not math.isnan(diametro_km) else False
+    )
+
+    if not resultado["precision_ok"].all():
+        log.warning(
+            "Hay coordenadas con más de %s decimales en %s",
+            DECIMALES_COORDENADAS,
+            dataset.tabla,
+        )
+    if not resultado["diameter_ok"].all():
+        log.warning(
+            "El diámetro estimado de celda no cumple el límite de 2 km en %s",
+            dataset.tabla,
+        )
+
+    _guardar(
+        resultado,
+        _carpeta_silver(dataset) / "validacion_coordenadas.csv",
+    )
+    return resultado
 
 
 def guardar_validacion(validaciones: list[pd.DataFrame]) -> None:
