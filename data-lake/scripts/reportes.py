@@ -173,24 +173,20 @@ def guardar_validacion(validaciones: list[pd.DataFrame]) -> None:
         )
 
 
+
 def validar_coordenadas_silver(
     motor: Engine,
     dataset: Dataset,
 ) -> pd.DataFrame:
-    """Valida precisión de coordenadas y diámetro aproximado de las celdas.
+    """Valida el formato textual de coordenadas ofuscadas en Silver.
 
-    Supone que latitude y longitude son columnas numéricas en PostgreSQL y
-    que la transformación las truncó a dos decimales.
+    Formato esperado: número con dos decimales seguido de cinco asteriscos.
+    Ejemplo: 19.43*****
 
-
-    Para una celda de 0,01° x 0,01°:
-      alto_km ≈ 111,32 * 0,01
-      ancho_km ≈ 111,32 * cos(latitud) * 0,01
-
-    Usa la latitud observada de mayor valor absoluto para estimar el ancho
-    de longitud mínimo dentro del dataset y, por tanto, una cota conservadora
-    del diámetro diagonal aproximado.
+    La parte numérica se usa únicamente para estimar el diámetro de la celda.
     """
+    patron = r"^-?[0-9]+\.[0-9]{2}\*{5}$"
+
     consulta = sql.SQL(
         """
         SELECT
@@ -198,21 +194,40 @@ def validar_coordenadas_silver(
             COUNT(*) AS total_rows,
             COUNT(latitude) AS latitude_not_null,
             COUNT(longitude) AS longitude_not_null,
+
             COUNT(*) FILTER (
                 WHERE latitude IS NOT NULL
-                  AND ABS(latitude * 100 - ROUND(latitude * 100)) > 0.000001
-            ) AS latitude_excess_decimals,
+                  AND latitude !~ {}
+            ) AS latitude_format_errors,
+
             COUNT(*) FILTER (
                 WHERE longitude IS NOT NULL
-                  AND ABS(longitude * 100 - ROUND(longitude * 100)) > 0.000001
-            ) AS longitude_excess_decimals,
-            MIN(latitude) AS min_latitude,
-            MAX(latitude) AS max_latitude
+                  AND longitude !~ {}
+            ) AS longitude_format_errors,
+
+            MIN(
+                CASE WHEN latitude ~ {}
+                     THEN split_part(latitude, '*', 1)::numeric
+                END
+            ) AS min_latitude,
+
+            MAX(
+                CASE WHEN latitude ~ {}
+                     THEN split_part(latitude, '*', 1)::numeric
+                END
+            ) AS max_latitude
+
         FROM {}
         GROUP BY snapshot_id
         ORDER BY snapshot_id
         """
-    ).format(sql.Identifier(dataset.tabla))
+    ).format(
+        sql.Literal(patron),
+        sql.Literal(patron),
+        sql.Literal(patron),
+        sql.Literal(patron),
+        sql.Identifier(dataset.tabla),
+    )
 
     conexion = motor.raw_connection()
     try:
@@ -236,6 +251,7 @@ def validar_coordenadas_silver(
         diametro_km = float("nan")
     else:
         latitud_maxima_abs = float(latitudes_extremas.abs().max())
+
         alto_km = 111.32 * TAM_CELDA_GRADOS
         ancho_km = (
             111.32
@@ -244,16 +260,17 @@ def validar_coordenadas_silver(
         )
         diametro_km = math.hypot(alto_km, ancho_km)
 
-    resultado["latitude_precision_ok"] = (
-        resultado["latitude_excess_decimals"] == 0
+    resultado["latitude_format_ok"] = (
+        resultado["latitude_format_errors"] == 0
     )
-    resultado["longitude_precision_ok"] = (
-        resultado["longitude_excess_decimals"] == 0
+    resultado["longitude_format_ok"] = (
+        resultado["longitude_format_errors"] == 0
     )
-    resultado["precision_ok"] = (
-        resultado["latitude_precision_ok"]
-        & resultado["longitude_precision_ok"]
+    resultado["format_ok"] = (
+        resultado["latitude_format_ok"]
+        & resultado["longitude_format_ok"]
     )
+
     resultado["max_abs_latitude_used_deg"] = round(latitud_maxima_abs, 6)
     resultado["estimated_cell_diameter_km"] = (
         round(diametro_km, 3) if not math.isnan(diametro_km) else None
@@ -262,12 +279,12 @@ def validar_coordenadas_silver(
         bool(diametro_km < 2) if not math.isnan(diametro_km) else False
     )
 
-    if not resultado["precision_ok"].all():
+    if not resultado["format_ok"].all():
         log.warning(
-            "Hay coordenadas con más de %s decimales en %s",
-            DECIMALES_COORDENADAS,
+            "Hay coordenadas que no cumplen el formato de ofuscación en %s",
             dataset.tabla,
         )
+
     if not resultado["diameter_ok"].all():
         log.warning(
             "El diámetro estimado de celda no cumple el límite de 2 km en %s",
@@ -279,6 +296,7 @@ def validar_coordenadas_silver(
         _carpeta_silver(dataset) / "validacion_coordenadas.csv",
     )
     return resultado
+
 
 
 def guardar_validacion(validaciones: list[pd.DataFrame]) -> None:

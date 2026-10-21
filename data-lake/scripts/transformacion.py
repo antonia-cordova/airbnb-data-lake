@@ -56,35 +56,43 @@ def limpiar_vacios(df: pd.DataFrame) -> None:
 
         df[columna] = valores.mask(es_nulo)
 
+
 # ---------------------------------------------------------------------------
 # Ofuscación de coordenadas geográficas
 # ---------------------------------------------------------------------------
 COLUMNAS_COORDENADAS = ("latitude", "longitude")
 DECIMALES_COORDENADAS = 2
+ASTERISCOS_COORDENADAS = 5
 
 
 def ofuscar_coordenadas(df: pd.DataFrame) -> None:
     """
-    Trunca latitud y longitud a 2 decimales para reducir
-    la precisión geográfica en la capa Silver.
+    Trunca latitude y longitude a dos decimales y agrega cinco asteriscos.
 
-    Los valores nulos se conservan.
-    Los valores originales permanecen intactos en Bronze.
+    Ejemplo: 19.432608 -> "19.43*****"
+             -99.133209 -> "-99.13*****"
+
+    Los nulos se conservan. Los valores originales de Bronze no se modifican.
     """
+    factor = 10 ** DECIMALES_COORDENADAS
+    sufijo = "*" * ASTERISCOS_COORDENADAS
+
     for columna in COLUMNAS_COORDENADAS:
         if columna not in df.columns:
             continue
 
         valores = pd.to_numeric(df[columna], errors="raise")
-        factor = 10 ** DECIMALES_COORDENADAS
 
-        df[columna] = valores.map(
-            lambda valor: (
-                f"{int(valor * factor) / factor:.{DECIMALES_COORDENADAS}f}"
-                if pd.notna(valor)
-                else None
-            )
-        )
+        def formatear(valor):
+            if pd.isna(valor):
+                return None
+
+            # Truncamiento hacia cero, consistente con la lógica anterior.
+            truncado = int(valor * factor) / factor
+            return f"{truncado:.{DECIMALES_COORDENADAS}f}{sufijo}"
+
+        df[columna] = valores.map(formatear).astype("object")
+
 # ---------------------------------------------------------------------------
 # Inferencia de tipos
 # ---------------------------------------------------------------------------
@@ -167,19 +175,29 @@ def convertir(serie: pd.Series, tipo: str) -> pd.Series:
     return serie
 
 
-def transformar(df: pd.DataFrame) -> dict[str, str]:
+
+def transformar(
+    df: pd.DataFrame,
+    ofuscar: bool = False,
+) -> dict[str, str]:
     """Limpia y tipa el DataFrame en el mismo objeto.
 
-    Devuelve un diccionario {columna: tipo PostgreSQL} con el esquema que
-    se usará para crear la tabla en Silver.
+    Si ofuscar=True, agrega asteriscos a las coordenadas geográficas.
+    Devuelve {columna: tipo PostgreSQL} para crear la tabla en Silver.
     """
     limpiar_vacios(df)
 
-    ofuscar_coordenadas(df)
+    if ofuscar:
+        ofuscar_coordenadas(df)
 
     tipos = {}
     for columna in df.columns:
         if columna in COLUMNAS_PROCEDENCIA:
+            tipos[columna] = "TEXT"
+            continue
+
+        # Las coordenadas ofuscadas deben permanecer como texto.
+        if ofuscar and columna in COLUMNAS_COORDENADAS:
             tipos[columna] = "TEXT"
             continue
 

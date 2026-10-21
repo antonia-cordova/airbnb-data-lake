@@ -64,7 +64,10 @@ def procesar_dataset(motor: Engine, dataset: Dataset,
     try:
         # 3. Limpieza y tipado
         log.info("[3/5] Limpiando y tipando datos")
-        tipos = transformar(df)
+        tipos = transformar(
+            df,
+            ofuscar=(dataset.nombre == "listings"),
+        )        
         validar_clave(df, dataset.clave)
 
         # 4. Carga en PostgreSQL
